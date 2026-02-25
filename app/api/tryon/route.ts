@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Replicate from "replicate";
+// @ts-expect-error -- no type declarations for heic-convert
 import convert from "heic-convert";
 
 // Convert HEIC base64 to JPEG base64
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     console.log("Converting any HEIC images to JPEG...");
     const convertedUserPhotos: Record<string, string> = {};
     for (const [angle, photo] of Object.entries(userPhotos)) {
-      convertedUserPhotos[angle] = await convertHeicToJpeg(photo);
+      convertedUserPhotos[angle] = await convertHeicToJpeg(photo as string);
     }
 
     // Handle product image - either from upload or URL

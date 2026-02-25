@@ -13,24 +13,19 @@ export default function UploadPage() {
   const [hasPhotos, setHasPhotos] = useState(false);
 
   useEffect(() => {
-    // Check if user has uploaded body photos from IndexedDB
     const checkPhotos = async () => {
       try {
         const photos = await getAllPhotos();
-        const photoCount = Object.keys(photos).length;
-
-        if (photoCount < 4) {
+        if (Object.keys(photos).length < 4) {
           router.push("/onboarding");
           return;
         }
-
         setHasPhotos(true);
       } catch (error) {
         console.error("Error checking photos:", error);
         router.push("/onboarding");
       }
     };
-
     checkPhotos();
   }, [router]);
 
@@ -38,18 +33,10 @@ export default function UploadPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log("Product file selected:", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
-
     try {
-      // Accept all image files including HEIC
-      // Server will handle HEIC conversion
       setProductImage(file);
       setImagePreview(URL.createObjectURL(file));
-      setProductUrl(""); // Clear URL if image is uploaded
+      setProductUrl("");
     } catch (error) {
       console.error("Error processing file:", error);
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -69,7 +56,6 @@ export default function UploadPage() {
     if (confirm("This will delete your body photos. You'll need to re-upload them. Continue?")) {
       try {
         await clearAllPhotos();
-        alert("Photos cleared! Redirecting to onboarding...");
         router.push("/onboarding");
       } catch (error) {
         console.error("Error clearing photos:", error);
@@ -96,14 +82,12 @@ export default function UploadPage() {
     setGenerating(true);
 
     try {
-      // Get user photos from IndexedDB
       const userPhotoFiles = await getAllPhotos();
 
       if (Object.keys(userPhotoFiles).length < 4) {
         throw new Error("User photos not found. Please upload photos first.");
       }
 
-      // Convert Files to base64 for API
       const userPhotos: Record<string, string> = {};
       for (const [angle, file] of Object.entries(userPhotoFiles)) {
         userPhotos[angle] = await fileToBase64(file);
@@ -114,7 +98,6 @@ export default function UploadPage() {
         productImageData = await fileToBase64(productImage);
       }
 
-      // Call the API
       const response = await fetch("/api/tryon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,8 +113,6 @@ export default function UploadPage() {
       }
 
       const data = await response.json();
-
-      // Store results in IndexedDB (sessionStorage too small for images)
       await saveTryonResults(data.results);
       router.push("/results");
     } catch (error) {
@@ -142,89 +123,91 @@ export default function UploadPage() {
     }
   };
 
-  if (!hasPhotos) {
-    return null;
-  }
+  if (!hasPhotos) return null;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-gray-50">
-      <div className="max-w-2xl w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-2">Add a Product</h1>
-          <p className="text-gray-600">
-            Paste a product link or upload a screenshot
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 relative">
+      {/* Background glow */}
+      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-gold/8 blur-[120px]" />
+
+      <div className="max-w-2xl w-full relative z-10">
+        {/* Header */}
+        <div className="text-center mb-10 animate-fade-up">
+          <h1 className="font-display text-5xl sm:text-6xl mb-3">Add a Product</h1>
+          <p className="text-txt-secondary text-lg">
+            Paste a link or upload a clothing image
           </p>
         </div>
 
-        <div className="bg-white rounded-lg p-8 shadow-sm space-y-6">
+        {/* Main card */}
+        <div className="glass p-8 sm:p-10 space-y-8 animate-scale-in stagger-1">
           {/* URL Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-txt-secondary">
               Product URL
             </label>
-            <input
-              type="url"
-              value={productUrl}
-              onChange={handleUrlChange}
-              placeholder="https://example.com/product"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-            />
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <svg className="w-4 h-4 text-txt-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </div>
+              <input
+                type="url"
+                value={productUrl}
+                onChange={handleUrlChange}
+                placeholder="https://example.com/product-image.jpg"
+                className="w-full pl-11 pr-4 py-3.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-txt-primary placeholder:text-txt-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/25 transition-all"
+              />
+            </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">OR</span>
-            </div>
+          {/* Divider */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-white/[0.06]" />
+            <span className="text-xs font-medium tracking-widest uppercase text-txt-muted">or</span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
           </div>
 
           {/* Image Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Screenshot
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-txt-secondary">
+              Upload Image
             </label>
 
             {imagePreview ? (
               <div className="space-y-4">
-                <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
+                <div className="relative w-full h-64 rounded-card overflow-hidden border border-white/[0.08]">
                   <img
                     src={imagePreview}
                     alt="Product"
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain bg-white/[0.02]"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                 </div>
                 <button
                   onClick={() => {
                     setProductImage(null);
                     setImagePreview(null);
                   }}
-                  className="text-red-500 hover:text-red-700 text-sm"
+                  className="text-sm text-txt-muted hover:text-[var(--error)] transition-colors"
                 >
                   Remove image
                 </button>
               </div>
             ) : (
-              <label className="cursor-pointer">
-                <div className="w-full h-64 border-4 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors">
-                  <div className="text-center">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      stroke="currentColor"
-                      fill="none"
-                      viewBox="0 0 48 48"
-                    >
-                      <path
-                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <p className="mt-2 text-sm text-gray-600">
-                      Click to upload product image
-                    </p>
+              <label className="cursor-pointer block">
+                <div className="upload-zone w-full h-52 flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <div className="w-14 h-14 rounded-full bg-gold/10 flex items-center justify-center mx-auto">
+                      <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-txt-primary">Upload product image</p>
+                      <p className="text-xs text-txt-muted mt-1">PNG, JPG, HEIC supported</p>
+                    </div>
                   </div>
                 </div>
                 <input
@@ -241,24 +224,38 @@ export default function UploadPage() {
           <button
             onClick={handleGenerate}
             disabled={generating || (!productUrl && !productImage)}
-            className="w-full px-8 py-4 bg-black text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-lg font-medium"
+            className="btn-primary w-full text-lg py-4"
           >
-            {generating ? "Generating Try-On..." : "Generate Try-On"}
+            {generating ? (
+              <>
+                <span className="spinner" />
+                Generating Try-On...
+              </>
+            ) : (
+              <>
+                Generate Try-On
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </>
+            )}
           </button>
         </div>
 
+        {/* Loading state */}
         {generating && (
-          <div className="text-center text-gray-600">
-            <p className="animate-pulse">
-              This may take 10-15 seconds...
+          <div className="text-center mt-6 animate-fade-in">
+            <p className="text-txt-secondary">
+              AI is dressing you up — this takes about 15 seconds...
             </p>
           </div>
         )}
 
-        <div className="text-center">
+        {/* Clear photos link */}
+        <div className="text-center mt-8 animate-fade-up stagger-3">
           <button
             onClick={handleClearPhotos}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
+            className="text-sm text-txt-muted hover:text-txt-secondary transition-colors underline underline-offset-4 decoration-white/10 hover:decoration-white/25"
           >
             Clear body photos and re-upload
           </button>
